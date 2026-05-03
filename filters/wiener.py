@@ -1,42 +1,61 @@
 import numpy as np
 
+EPS = 1e-8
+
+
 def wiener_filter(signal, noise_est=None, alpha=1.0):
     """
-    Wiener Filter (Frequency Domain)
+    Improved Wiener Filter (Frequency Domain)
 
     signal     : noisy input signal
-    noise_est  : optional noise estimate (same length)
+    noise_est  : optional noise estimate
     alpha      : noise scaling factor
 
     Returns:
         filtered signal
     """
 
-    signal = np.array(signal)
+    signal = np.asarray(signal, dtype=np.float32)
+    N = len(signal)
 
-    # FFT of signal
-    S = np.fft.fft(signal)
+    # ---------------- WINDOWING ----------------
+    window = np.hanning(N)
+    signal_win = signal * window
 
-    # Power spectrum of signal
+    # ---------------- FFT ----------------
+    S = np.fft.fft(signal_win)
     S_power = np.abs(S) ** 2
 
-    # Estimate noise power
+    # ---------------- NOISE ESTIMATION ----------------
     if noise_est is None:
-        # Estimate noise from first 10% of signal (assumes silence)
-        noise_sample = signal[:len(signal)//10]
-        N_power = np.mean(np.abs(np.fft.fft(noise_sample)) ** 2)
-        N_power = np.ones_like(S_power) * N_power
+        # Use small segment (more robust than 10%)
+        seg_len = min(2048, N)
+        noise_sample = signal[:seg_len] * np.hanning(seg_len)
+
+        N_fft = np.fft.fft(noise_sample, n=N)
+        N_power = np.abs(N_fft) ** 2
+
     else:
-        N = np.fft.fft(noise_est)
-        N_power = np.abs(N) ** 2
+        noise_est = np.asarray(noise_est, dtype=np.float32)
 
-    # Wiener filter formula
-    H = S_power / (S_power + alpha * N_power + 1e-8)
+        # Match length
+        if len(noise_est) != N:
+            noise_est = np.pad(noise_est, (0, N - len(noise_est)))[:N]
 
-    # Apply filter
+        noise_win = noise_est * window
+        N_fft = np.fft.fft(noise_win)
+        N_power = np.abs(N_fft) ** 2
+
+    # ---------------- WIENER FILTER ----------------
+    H = S_power / (S_power + alpha * N_power + EPS)
+
+    # ---------------- APPLY FILTER ----------------
     S_filtered = H * S
 
-    # Inverse FFT
+    # ---------------- INVERSE FFT ----------------
     filtered = np.fft.ifft(S_filtered).real
+
+    # Remove window effect
+    filtered = filtered / (window + EPS)
 
     return filtered
