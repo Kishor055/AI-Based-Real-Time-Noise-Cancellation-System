@@ -1,0 +1,135 @@
+# =========================================================
+# 🎯 AI NOISE CANCELLATION SYSTEM CONFIGURATION
+# =========================================================
+
+project:
+  name: AI Noise Cancellation System
+  version: 1.0
+  environment: dev   # dev / prod
+
+# =========================================================
+# 🔊 AUDIO SETTINGS
+# =========================================================
+
+audio:
+  sample_rate: 16000
+  chunk_size: 1024
+  mono: true
+  normalize: true
+
+  input:
+    file: data/clean/sample1.wav
+
+  output:
+    file: output/filtered_audio.wav
+
+# =========================================================
+# 🎤 REAL-TIME PROCESSING
+# =========================================================
+
+realtime:
+  enabled: true
+  device: default
+  block_size: 1024
+  latency: low
+
+# =========================================================
+# ⚙️ FILTER CONFIGURATION
+# =========================================================
+
+filters:
+  active: NLMS   # LMS / NLMS / Wiener / DL
+
+  lms:
+    filter_order: 64
+    mu: 0.01
+
+  nlms:
+    filter_order: 64
+    mu: 0.5
+    epsilon: 1e-6
+
+  wiener:
+    alpha: 1.0
+
+# =========================================================
+# 🧠 MACHINE LEARNING MODEL
+# =========================================================
+
+ml:
+  enabled: true
+  type: denoise_autoencoder
+
+  model:
+    path: ml_model/weights/denoise_model.pth
+    chunk_size: 1024
+
+  device: auto   # cpu / cuda / auto
+
+# =========================================================
+# 🏋️ TRAINING SETTINGS
+# =========================================================
+
+training:
+  data:
+    clean_path: data/clean
+
+  hyperparameters:
+    epochs: 20
+    batch_size: 16
+    learning_rate: 0.001
+    chunk_size: 1024
+
+  checkpoint:
+    save_path: ml_model/weights/denoise_model.pth
+    save_best_only: true
+
+# =========================================================
+# 📊 METRICS CONFIGURATION
+# =========================================================
+
+metrics:
+  enabled: true
+
+  compute:
+    snr: true
+    mse: true
+    rmse: true
+    psnr: true
+
+  frame:
+    enabled: true
+    frame_size: 1024
+
+# =========================================================
+# 🌐 DASHBOARD SETTINGS (Streamlit)
+# =========================================================
+
+dashboard:
+  title: "🎧 AI Noise Cancellation Dashboard"
+  live_plot_points: 200
+
+  display:
+    waveform: true
+    metrics: true
+    comparison: true
+
+# =========================================================
+# 📤 OUTPUT SETTINGS
+# =========================================================
+
+output:
+  save_audio: true
+  save_logs: true
+
+  paths:
+    audio: output/filtered_audio.wav
+    logs: output/logs/
+
+# =========================================================
+# 🧪 DEBUG / LOGGING
+# =========================================================
+
+debug:
+  verbose: true
+  log_level: INFO   # DEBUG / INFO / WARNING / ERROR

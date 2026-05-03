@@ -1,0 +1,27 @@
+import numpy as np
+import soundfile as sf
+
+# Parameters
+sr = 16000          # sample rate
+duration = 3        # seconds
+
+t = np.linspace(0, duration, int(sr * duration), endpoint=False)
+
+# Generate a clean signal (mix of frequencies like speech)
+signal = (
+    0.5 * np.sin(2 * np.pi * 300 * t) +
+    0.3 * np.sin(2 * np.pi * 600 * t) +
+    0.2 * np.sin(2 * np.pi * 1200 * t)
+)
+
+# Add small silence at start (helps Wiener filter)
+silence = np.zeros(int(0.5 * sr))
+signal = np.concatenate([silence, signal])
+
+# Normalize
+signal = signal / np.max(np.abs(signal))
+
+# Save file
+sf.write("sample1.wav", signal, sr)
+
+print("✅ sample1.wav generated")
