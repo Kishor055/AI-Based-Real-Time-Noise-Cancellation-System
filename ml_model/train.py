@@ -3,88 +3,134 @@ import numpy as np
 import torch
 import torch.nn as nn
 import torch.optim as optim
-import soundfile as sf
-from torch.utils.data import Dataset, DataLoader
+from tqdm import tqdm
+
 from model import DenoiseNet
 
 # ---------------- CONFIG ----------------
 DATA_PATH = "../data/clean"
+WEIGHTS_PATH = "weights/denoise_model.pth"
+
 EPOCHS = 20
 BATCH_SIZE = 16
 LR = 0.001
 CHUNK_SIZE = 1024
+
 DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
 
-# ---------------- DATASET ----------------
-class AudioDataset(Dataset):
-    def __init__(self, folder):
-        self.files = [os.path.join(folder, f) for f in os.listdir(folder) if f.endswith(".wav")]
+os.makedirs("weights", exist_ok=True)
 
-    def __len__(self):
-        return len(self.files)
 
-    def __getitem__(self, idx):
-        signal, _ = sf.read(self.files[idx])
+# ---------------- DATA LOADER ----------------
+def load_dataset(path):
+    import soundfile as sf
 
-        # Mono
-        if len(signal.shape) > 1:
+    chunks_clean = []
+    chunks_noisy = []
+
+    for file in os.listdir(path):
+        if not file.endswith(".wav"):
+            continue
+
+        signal, _ = sf.read(os.path.join(path, file))
+
+        if signal.ndim > 1:
             signal = np.mean(signal, axis=1)
 
-        # Normalize
-        signal = signal / np.max(np.abs(signal))
+        signal = signal / (np.max(np.abs(signal)) + 1e-8)
 
-        # Random chunk
-        if len(signal) > CHUNK_SIZE:
-            start = np.random.randint(0, len(signal) - CHUNK_SIZE)
-            clean = signal[start:start+CHUNK_SIZE]
-        else:
-            clean = np.pad(signal, (0, CHUNK_SIZE - len(signal)))
+        # Create noisy version
+        noise = np.random.randn(len(signal)) * 0.02
+        noisy = signal + noise
 
-        # Add noise (realistic training)
-        noise = np.random.randn(CHUNK_SIZE) * 0.05
-        noisy = clean + noise
+        # Split into chunks
+        for i in range(0, len(signal), CHUNK_SIZE):
+            clean_chunk = signal[i:i+CHUNK_SIZE]
+            noisy_chunk = noisy[i:i+CHUNK_SIZE]
 
-        return torch.tensor(noisy, dtype=torch.float32), torch.tensor(clean, dtype=torch.float32)
+            if len(clean_chunk) < CHUNK_SIZE:
+                pad = CHUNK_SIZE - len(clean_chunk)
+                clean_chunk = np.pad(clean_chunk, (0, pad))
+                noisy_chunk = np.pad(noisy_chunk, (0, pad))
 
-# ---------------- TRAIN FUNCTION ----------------
+            chunks_clean.append(clean_chunk)
+            chunks_noisy.append(noisy_chunk)
+
+    return np.array(chunks_noisy), np.array(chunks_clean)
+
+
+# ---------------- TRAIN ----------------
 def train():
-    dataset = AudioDataset(DATA_PATH)
-    loader = DataLoader(dataset, batch_size=BATCH_SIZE, shuffle=True)
+    print("🚀 Loading dataset...")
+
+    X, Y = load_dataset(DATA_PATH)
+
+    X = torch.tensor(X, dtype=torch.float32).to(DEVICE)
+    Y = torch.tensor(Y, dtype=torch.float32).to(DEVICE)
+
+    dataset_size = X.shape[0]
 
     model = DenoiseNet().to(DEVICE)
-    criterion = nn.MSELoss()
     optimizer = optim.Adam(model.parameters(), lr=LR)
+    criterion = nn.MSELoss()
 
-    print(f"Training on {DEVICE}")
-    print(f"Total samples: {len(dataset)}")
+    best_loss = float("inf")
 
+    # Resume training if exists
+    if os.path.exists(WEIGHTS_PATH):
+        print("🔄 Loading existing model...")
+        checkpoint = torch.load(WEIGHTS_PATH, map_location=DEVICE)
+
+        if isinstance(checkpoint, dict) and "model_state_dict" in checkpoint:
+            model.load_state_dict(checkpoint["model_state_dict"])
+            optimizer.load_state_dict(checkpoint["optimizer_state_dict"])
+        else:
+            model.load_state_dict(checkpoint)
+
+    # ---------------- TRAIN LOOP ----------------
     for epoch in range(EPOCHS):
-        total_loss = 0
+        model.train()
+        epoch_loss = 0
 
-        for noisy, clean in loader:
-            noisy = noisy.to(DEVICE)
-            clean = clean.to(DEVICE)
+        # Shuffle indices
+        indices = np.random.permutation(dataset_size)
 
-            output = model(noisy)
+        for i in tqdm(range(0, dataset_size, BATCH_SIZE), desc=f"Epoch {epoch+1}/{EPOCHS}"):
+            batch_idx = indices[i:i+BATCH_SIZE]
 
-            loss = criterion(output, clean)
+            batch_x = X[batch_idx]
+            batch_y = Y[batch_idx]
 
             optimizer.zero_grad()
+
+            output = model(batch_x)
+            loss = criterion(output, batch_y)
+
             loss.backward()
             optimizer.step()
 
-            total_loss += loss.item()
+            epoch_loss += loss.item()
 
-        avg_loss = total_loss / len(loader)
+        avg_loss = epoch_loss / (dataset_size / BATCH_SIZE)
 
-        print(f"Epoch [{epoch+1}/{EPOCHS}] Loss: {avg_loss:.6f}")
+        print(f"📉 Epoch {epoch+1} Loss: {avg_loss:.6f}")
 
-    # Save model
-    os.makedirs("weights", exist_ok=True)
-    torch.save(model.state_dict(), "weights/denoise_model.pth")
+        # ---------------- SAVE BEST MODEL ----------------
+        if avg_loss < best_loss:
+            best_loss = avg_loss
 
-    print("✅ Model saved to weights/denoise_model.pth")
+            torch.save({
+                "model_state_dict": model.state_dict(),
+                "optimizer_state_dict": optimizer.state_dict(),
+                "loss": best_loss,
+                "epoch": epoch
+            }, WEIGHTS_PATH)
 
-# ---------------- RUN ----------------
+            print("💾 Saved best model")
+
+    print("✅ Training complete!")
+
+
+# ---------------- ENTRY ----------------
 if __name__ == "__main__":
     train()
