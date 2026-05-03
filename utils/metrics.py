@@ -1,49 +1,56 @@
 import numpy as np
 
-EPS = 1e-10  # to avoid division by zero
+EPS = 1e-10
+
+
+# ---------------- INTERNAL UTILS ----------------
+
+def _prepare_signals(clean, processed):
+    """
+    Ensure both signals are numpy arrays and same length
+    """
+    clean = np.asarray(clean, dtype=np.float32)
+    processed = np.asarray(processed, dtype=np.float32)
+
+    min_len = min(len(clean), len(processed))
+
+    return clean[:min_len], processed[:min_len]
 
 
 # ---------------- BASIC METRICS ----------------
 
 def compute_snr(clean, processed):
-    """
-    Signal-to-Noise Ratio (dB)
-    """
-    clean = np.array(clean)
-    processed = np.array(processed)
+    clean, processed = _prepare_signals(clean, processed)
 
     noise = clean - processed
 
     signal_power = np.sum(clean ** 2)
-    noise_power = np.sum(noise ** 2) + EPS
+    noise_power = np.sum(noise ** 2)
 
-    return 10 * np.log10(signal_power / noise_power)
+    if signal_power < EPS:
+        return 0.0
+
+    return 10 * np.log10((signal_power + EPS) / (noise_power + EPS))
 
 
 def compute_mse(clean, processed):
-    """
-    Mean Squared Error
-    """
-    clean = np.array(clean)
-    processed = np.array(processed)
-
+    clean, processed = _prepare_signals(clean, processed)
     return np.mean((clean - processed) ** 2)
 
 
 def compute_rmse(clean, processed):
-    """
-    Root Mean Squared Error
-    """
     return np.sqrt(compute_mse(clean, processed))
 
 
 def compute_psnr(clean, processed):
-    """
-    Peak Signal-to-Noise Ratio (dB)
-    """
+    clean, processed = _prepare_signals(clean, processed)
+
     mse = compute_mse(clean, processed)
 
-    max_val = np.max(np.abs(clean)) + EPS
+    if mse < EPS:
+        return 100.0  # near perfect signal
+
+    max_val = 1.0  # assume normalized audio
 
     return 20 * np.log10(max_val / (np.sqrt(mse) + EPS))
 
@@ -51,20 +58,17 @@ def compute_psnr(clean, processed):
 # ---------------- FRAME-BASED METRICS ----------------
 
 def frame_snr(clean, processed, frame_size=1024):
-    """
-    Frame-wise SNR (useful for real-time dashboard)
-    """
-    clean = np.array(clean)
-    processed = np.array(processed)
+    clean, processed = _prepare_signals(clean, processed)
 
+    num_frames = len(clean) // frame_size
     snr_values = []
 
-    for i in range(0, len(clean), frame_size):
-        c = clean[i:i+frame_size]
-        p = processed[i:i+frame_size]
+    for i in range(num_frames):
+        start = i * frame_size
+        end = start + frame_size
 
-        if len(c) == 0:
-            continue
+        c = clean[start:end]
+        p = processed[start:end]
 
         snr_values.append(compute_snr(c, p))
 
@@ -72,20 +76,17 @@ def frame_snr(clean, processed, frame_size=1024):
 
 
 def frame_mse(clean, processed, frame_size=1024):
-    """
-    Frame-wise MSE
-    """
-    clean = np.array(clean)
-    processed = np.array(processed)
+    clean, processed = _prepare_signals(clean, processed)
 
+    num_frames = len(clean) // frame_size
     mse_values = []
 
-    for i in range(0, len(clean), frame_size):
-        c = clean[i:i+frame_size]
-        p = processed[i:i+frame_size]
+    for i in range(num_frames):
+        start = i * frame_size
+        end = start + frame_size
 
-        if len(c) == 0:
-            continue
+        c = clean[start:end]
+        p = processed[start:end]
 
         mse_values.append(compute_mse(c, p))
 
@@ -95,28 +96,21 @@ def frame_mse(clean, processed, frame_size=1024):
 # ---------------- REAL-TIME SAFE METRICS ----------------
 
 def safe_snr(clean, processed):
-    """
-    Safe SNR for real-time (handles silent signals)
-    """
-    if np.all(clean == 0):
+    clean, processed = _prepare_signals(clean, processed)
+
+    if np.all(np.abs(clean) < EPS):
         return 0.0
 
     return compute_snr(clean, processed)
 
 
 def safe_mse(clean, processed):
-    """
-    Safe MSE
-    """
     return compute_mse(clean, processed)
 
 
 # ---------------- SUMMARY FUNCTION ----------------
 
 def evaluate_all(clean, processed):
-    """
-    Returns all key metrics in one dictionary
-    """
     return {
         "SNR": compute_snr(clean, processed),
         "MSE": compute_mse(clean, processed),
