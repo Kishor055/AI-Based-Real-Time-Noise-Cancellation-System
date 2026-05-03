@@ -4,21 +4,19 @@ EPS = 1e-10
 
 
 # ---------------- INTERNAL UTILS ----------------
-
 def _prepare_signals(clean, processed):
-    """
-    Ensure both signals are numpy arrays and same length
-    """
     clean = np.asarray(clean, dtype=np.float32)
     processed = np.asarray(processed, dtype=np.float32)
 
     min_len = min(len(clean), len(processed))
-
     return clean[:min_len], processed[:min_len]
 
 
-# ---------------- BASIC METRICS ----------------
+def _safe_log10(x):
+    return np.log10(np.maximum(x, EPS))
 
+
+# ---------------- BASIC METRICS ----------------
 def compute_snr(clean, processed):
     clean, processed = _prepare_signals(clean, processed)
 
@@ -30,71 +28,72 @@ def compute_snr(clean, processed):
     if signal_power < EPS:
         return 0.0
 
-    return 10 * np.log10((signal_power + EPS) / (noise_power + EPS))
+    snr = 10 * _safe_log10((signal_power + EPS) / (noise_power + EPS))
+
+    return float(np.nan_to_num(snr))
 
 
 def compute_mse(clean, processed):
     clean, processed = _prepare_signals(clean, processed)
-    return np.mean((clean - processed) ** 2)
+    mse = np.mean((clean - processed) ** 2)
+    return float(np.nan_to_num(mse))
 
 
 def compute_rmse(clean, processed):
-    return np.sqrt(compute_mse(clean, processed))
+    return float(np.sqrt(compute_mse(clean, processed)))
 
 
 def compute_psnr(clean, processed):
     clean, processed = _prepare_signals(clean, processed)
 
-    mse = compute_mse(clean, processed)
+    noise = clean - processed
+    mse = np.mean(noise ** 2)
 
     if mse < EPS:
-        return 100.0  # near perfect signal
+        return 100.0
 
-    max_val = 1.0  # assume normalized audio
+    max_val = 1.0  # normalized audio
+    psnr = 20 * _safe_log10(max_val / (np.sqrt(mse) + EPS))
 
-    return 20 * np.log10(max_val / (np.sqrt(mse) + EPS))
+    return float(np.nan_to_num(psnr))
 
 
 # ---------------- FRAME-BASED METRICS ----------------
+def _frame_split(signal, frame_size):
+    """Split signal into frames including last partial frame"""
+    num_frames = int(np.ceil(len(signal) / frame_size))
+
+    padded = np.pad(signal, (0, num_frames * frame_size - len(signal)))
+    return padded.reshape(num_frames, frame_size)
+
 
 def frame_snr(clean, processed, frame_size=1024):
     clean, processed = _prepare_signals(clean, processed)
 
-    num_frames = len(clean) // frame_size
-    snr_values = []
+    clean_frames = _frame_split(clean, frame_size)
+    proc_frames = _frame_split(processed, frame_size)
 
-    for i in range(num_frames):
-        start = i * frame_size
-        end = start + frame_size
+    snr_values = [
+        compute_snr(c, p) for c, p in zip(clean_frames, proc_frames)
+    ]
 
-        c = clean[start:end]
-        p = processed[start:end]
-
-        snr_values.append(compute_snr(c, p))
-
-    return np.array(snr_values)
+    return np.array(snr_values, dtype=np.float32)
 
 
 def frame_mse(clean, processed, frame_size=1024):
     clean, processed = _prepare_signals(clean, processed)
 
-    num_frames = len(clean) // frame_size
-    mse_values = []
+    clean_frames = _frame_split(clean, frame_size)
+    proc_frames = _frame_split(processed, frame_size)
 
-    for i in range(num_frames):
-        start = i * frame_size
-        end = start + frame_size
+    mse_values = [
+        compute_mse(c, p) for c, p in zip(clean_frames, proc_frames)
+    ]
 
-        c = clean[start:end]
-        p = processed[start:end]
-
-        mse_values.append(compute_mse(c, p))
-
-    return np.array(mse_values)
+    return np.array(mse_values, dtype=np.float32)
 
 
 # ---------------- REAL-TIME SAFE METRICS ----------------
-
 def safe_snr(clean, processed):
     clean, processed = _prepare_signals(clean, processed)
 
@@ -109,7 +108,6 @@ def safe_mse(clean, processed):
 
 
 # ---------------- SUMMARY FUNCTION ----------------
-
 def evaluate_all(clean, processed):
     return {
         "SNR": compute_snr(clean, processed),
