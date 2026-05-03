@@ -1,5 +1,8 @@
 import numpy as np
 
+EPS = 1e-8
+
+
 class LMSFilter:
     """
     LMS Adaptive Filter for noise cancellation
@@ -8,11 +11,11 @@ class LMSFilter:
     def __init__(self, filter_order=32, mu=0.01):
         self.M = filter_order
         self.mu = mu
-        self.w = np.zeros(self.M)
+        self.w = np.zeros(self.M, dtype=np.float32)
 
     def reset(self):
         """Reset filter weights"""
-        self.w = np.zeros(self.M)
+        self.w.fill(0.0)
 
     def process(self, desired, reference):
         """
@@ -24,21 +27,30 @@ class LMSFilter:
             e : filtered output (clean signal)
         """
 
-        N = len(desired)
-        y = np.zeros(N)
-        e = np.zeros(N)
+        desired = np.asarray(desired, dtype=np.float32)
+        reference = np.asarray(reference, dtype=np.float32)
+
+        # Ensure same length
+        N = min(len(desired), len(reference))
+        desired = desired[:N]
+        reference = reference[:N]
+
+        y = np.zeros(N, dtype=np.float32)
+        e = np.zeros(N, dtype=np.float32)
 
         for n in range(self.M, N):
-            x_vec = reference[n:n-self.M:-1]
+            # Build input vector (reversed window)
+            x_vec = reference[n - self.M:n][::-1]
 
-            if len(x_vec) != self.M:
-                continue
+            # Estimate noise
+            y[n] = np.dot(self.w, x_vec)
 
-            y[n] = np.dot(self.w, x_vec)   # estimated noise
-            e[n] = desired[n] - y[n]       # error (clean output)
+            # Error = cleaned signal
+            e[n] = desired[n] - y[n]
 
-            # LMS weight update
-            self.w += self.mu * e[n] * x_vec
+            # ---- Stable LMS Update ----
+            norm = np.dot(x_vec, x_vec) + EPS
+            self.w += (self.mu / norm) * e[n] * x_vec
 
         return y, e
 
