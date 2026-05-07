@@ -258,6 +258,7 @@ This project is open-source and available under the MIT License.
 ## 👨‍💻 Author
 
 **Kishor Kakde**
+---
 GitHub: https://github.com/Kishor055/AI-Based-Real-Time-Noise-Cancellation-System
 
 ---
