@@ -19,110 +19,109 @@ from utils.metrics import evaluate_all
 from realtime.processor import process_audio
 from ml_model.model import DenoiseNet, WEIGHTS_PATH
 
-# ---------------- FORCE UTF-8 ON WINDOWS ----------------
-if sys.platform.startswith("win"):
-    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8", errors="replace")
-    sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding="utf-8", errors="replace")
-
 # ---------------- PAGE CONFIGURATION ----------------
 st.set_page_config(
-    page_title="AI Noise Cancellation & Audio Denoising System",
+    page_title="SoundShield AI | Noise Cancellation System",
     page_icon="🎧",
     layout="wide",
     initial_sidebar_state="expanded"
 )
 
-# ---------------- CUSTOM CSS FOR RICH AESTHETICS ----------------
+# ---------------- CUSTOM CSS FOR RICH & SIMPLE AESTHETICS ----------------
 st.markdown("""
 <style>
-@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
 
 html, body, [class*="css"] {
-    font-family: 'Outfit', sans-serif;
+    font-family: 'Inter', sans-serif;
 }
 
 /* App Background */
 .stApp {
-    background: radial-gradient(circle at 10% 20%, #101725 0%, #06090f 90%);
-    color: #f0f2f6;
+    background-color: #0f172a;
+    color: #e2e8f0;
 }
 
 /* Custom Cards */
 .metric-card {
-    background: rgba(255, 255, 255, 0.03);
-    border-radius: 16px;
-    padding: 24px;
-    border: 1px solid rgba(255, 255, 255, 0.07);
-    box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3);
-    backdrop-filter: blur(10px);
-    -webkit-backdrop-filter: blur(10px);
-    transition: all 0.3s ease;
+    background: #1e293b;
+    border-radius: 10px;
+    padding: 16px;
+    border: 1px solid #334155;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    transition: all 0.2s ease-in-out;
     text-align: center;
 }
 .metric-card:hover {
-    transform: translateY(-4px);
-    border-color: #00f0ff;
-    box-shadow: 0 12px 40px 0 rgba(0, 240, 255, 0.15);
+    transform: translateY(-2px);
+    border-color: #38bdf8;
+    box-shadow: 0 6px 20px rgba(56, 189, 248, 0.1);
 }
 .metric-value {
-    font-size: 2.3rem;
+    font-size: 1.8rem;
     font-weight: 700;
-    color: #00f0ff;
-    margin: 8px 0;
-    text-shadow: 0 0 12px rgba(0, 240, 255, 0.4);
+    color: #38bdf8;
+    margin: 4px 0;
 }
 .metric-label {
-    font-size: 0.85rem;
+    font-size: 0.75rem;
     font-weight: 600;
-    color: #8a99ad;
+    color: #94a3b8;
     text-transform: uppercase;
-    letter-spacing: 1.5px;
+    letter-spacing: 1.2px;
 }
 
-/* Header Banner */
-.header-banner {
-    text-align: center;
-    padding: 3rem 2rem;
+/* Main Header Styling */
+.main-header {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 1rem 0;
     margin-bottom: 2rem;
-    background: linear-gradient(135deg, rgba(0, 240, 255, 0.08) 0%, rgba(123, 97, 255, 0.08) 100%);
-    border-radius: 20px;
-    border: 1px solid rgba(255, 255, 255, 0.05);
-    box-shadow: inset 0 0 20px rgba(255, 255, 255, 0.02);
+    border-bottom: 1px solid #334155;
 }
-.header-title {
-    font-size: 3.2rem;
+.main-header .logo {
+    font-size: 2.5rem;
+}
+.main-header h1 {
+    font-size: 2.2rem;
     font-weight: 700;
-    background: linear-gradient(90deg, #00f0ff 0%, #7b61ff 100%);
+    margin: 0;
+    background: linear-gradient(90deg, #38bdf8 0%, #818cf8 100%);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
-    margin-bottom: 0.8rem;
 }
-.header-subtitle {
-    font-size: 1.2rem;
-    color: #8c9cb3;
+.main-header .subtitle {
+    font-size: 0.95rem;
+    color: #94a3b8;
+    margin: 4px 0 0 0;
 }
 
 /* Sidebar Custom Styling */
 section[data-testid="stSidebar"] {
-    background-color: #080c14 !important;
-    border-right: 1px solid rgba(255, 255, 255, 0.05) !important;
+    background-color: #0b0f19 !important;
+    border-right: 1px solid #1e293b !important;
 }
 
 /* Alert styling customization */
 .stAlert {
-    border-radius: 12px !important;
+    border-radius: 8px !important;
 }
 
 </style>
 """, unsafe_allow_html=True)
 
-# ---------------- HEADER BANNER ----------------
+# ---------------- HEADER SECTION ----------------
 st.markdown("""
-<div class="header-banner">
-    <div class="header-title">🎧 Real-Time AI Noise Cancellation System</div>
-    <div class="header-subtitle">Evaluate, simulate, and apply adaptive filters & neural networks to clean noisy audio signals.</div>
+<div class="main-header">
+    <span class="logo">🎧</span>
+    <div class="title-container">
+        <h1>SoundShield AI</h1>
+        <p class="subtitle">Enterprise Real-Time Noise Cancellation & Speech Enhancement Dashboard</p>
+    </div>
 </div>
 """, unsafe_allow_html=True)
+
 
 
 # ---------------- NOISE GENERATOR HELPERS ----------------
