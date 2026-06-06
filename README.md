@@ -1,270 +1,211 @@
-# AI-Based-Real-Time-Noise-Cancellation-System
-Built an AI-powered real-time noise cancellation system integrating adaptive filtering (LMS/NLMS), Wiener filtering, and deep learning-based denoising with a live Streamlit dashboard for performance monitoring (SNR, MSE).
+# 🎧 SoundShield AI
+
+[![Python Version](https://img.shields.io/badge/Python-3.8+-blue.svg?style=for-the-badge&logo=python&logoColor=white)](https://python.org)
+[![PyTorch Version](https://img.shields.io/badge/PyTorch-2.0+-EE4C2C.svg?style=for-the-badge&logo=pytorch&logoColor=white)](https://pytorch.org)
+[![Streamlit Version](https://img.shields.io/badge/Streamlit-1.30+-FF4B4B.svg?style=for-the-badge&logo=streamlit&logoColor=white)](https://streamlit.io)
+[![Build Status](https://img.shields.io/badge/Build-Passing-brightgreen.svg?style=for-the-badge)](#)
+
+**SoundShield AI** is an enterprise-grade, real-time audio noise cancellation and speech enhancement system. By combining classic **Digital Signal Processing (DSP)** adaptive filters with state-of-the-art **Deep Learning Autoencoder architectures** (PyTorch), SoundShield AI cleans noisy audio files and live microphone feeds, providing real-time SNR monitoring, waveform visualization, and spectrogram analysis.
 
 ---
 
-# 🎧 AI Noise Cancellation System
+## 📸 Application Preview
 
-**DSP + Deep Learning based Audio Denoising Pipeline**
+### 📊 Real-Time Denoising Dashboard
+![SoundShield AI Dashboard](dashboard.png)
 
----
+*The SoundShield AI Dashboard allows users to upload custom WAV audio files or select preset samples, inject simulated noise (White Gaussian, Pink, or 50Hz AC Hum), adjust filter hyperparameters, and listen to the clean vs. denoised output side-by-side.*
 
-## 📌 Overview
+### 🧠 Deep Learning Autoencoder Console
+![SoundShield AI Deep Learning Center](predictor.png)
 
-This project implements a **complete audio noise reduction system** using both:
-
-* 🎚 **Digital Signal Processing (DSP)** techniques
-* 🤖 **Deep Learning-based denoising**
-
-The system supports multiple filtering approaches and provides **performance evaluation, real-time processing, and a web interface**.
+*The Deep Learning Center provides an interface to train and monitor the PyTorch `DenoiseNet` model in real-time, plotting loss curves and saving optimal model weights.*
 
 ---
 
-## 🚀 Key Features
+## 🧠 System Architecture & Pipeline
 
-* 🔊 Audio denoising using:
+SoundShield AI supports batch command-line execution and an interactive Streamlit UI. Below is the signal processing and data flow:
 
-  * LMS (Least Mean Squares)
-  * NLMS (Normalized LMS)
-  * Wiener Filter
-  * Deep Learning Model (PyTorch)
-
-* 🎤 Real-time microphone processing (low latency)
-
-* 📊 Performance metrics:
-
-  * SNR (Signal-to-Noise Ratio)
-  * MSE / RMSE
-  * PSNR
-
-* 🌐 Streamlit web app for interactive testing
-
-* ⚙️ Config-driven pipeline
-
-* 📦 Modular and scalable architecture
-
----
-
-## 🧠 System Architecture
-
+```mermaid
+graph TD
+    InputAudio[Noisy WAV Audio / Live Mic] --> InputPipe[Audio Input Pipeline]
+    InputPipe -->|Optional| NoiseSim[Noise Injection Simulator]
+    NoiseSim -->|Selectable Filter| Engine[Denoising Engine]
+    
+    subgraph DSP & Deep Learning Filters
+        Engine -->|LMS| LMS[LMS Filter]
+        Engine -->|NLMS| NLMS[NLMS Filter]
+        Engine -->|Wiener| Wiener[Wiener Filter]
+        Engine -->|Neural Network| DL[DenoiseNet Autoencoder]
+    end
+    
+    LMS --> Reconstruct[Audio Reconstruction & Normalization]
+    NLMS --> Reconstruct
+    Wiener --> Reconstruct
+    DL --> Reconstruct
+    
+    Reconstruct --> Playback[Audio Playback & Download]
+    Reconstruct --> Metrics[Metrics Suite: SNR, MSE, RMSE, PSNR]
+    Reconstruct --> Visualizer[Visualizer: Waveforms & Spectrograms]
+    
+    Metrics --> UI[Streamlit Live Dashboard]
+    Visualizer --> UI
 ```
-Input Audio
-     │
-     ▼
-Noise Addition / Real Noise Input
-     │
-     ▼
-Filter Selection
-(LMS / NLMS / Wiener / DL)
-     │
-     ▼
-Processed Audio Output
-     │
-     ▼
-Performance Metrics (SNR, MSE, PSNR)
-```
+
+### 👥 Meet the Denoising Engines
+1. **LMS Filter (`LMSFilter`)**: A time-domain adaptive filter that utilizes the Least Mean Squares algorithm to continuously update filter coefficients based on the error between the desired noisy signal and a noise reference signal.
+2. **NLMS Filter (`NLMSFilter`)**: An improved version of LMS that normalizes the step size ($\mu$) by the energy of the input vector, ensuring faster convergence and numerical stability across varying signal levels.
+3. **Wiener Filter (`wiener_filter`)**: A frequency-domain speech enhancement filter that computes a transfer function based on estimated clean signal power and noise power, minimizing the mean squared error (MSE) across the frequency spectrum. Excellent for stationary noise.
+4. **Deep Autoencoder (`DenoiseNet`)**: A fully connected PyTorch neural network that maps noisy 1024-sample audio chunks into a low-dimensional latent space (512 $\to$ 256) and reconstructs the clean signal counterpart, resolving non-stationary and complex noise patterns.
+
+---
+
+## 🛠️ Technical Stack & Dependencies
+
+### 💻 Frontend & Visualization
+- **Dashboard Framework**: Streamlit
+- **Visualization**: Matplotlib (Waveform & Spectrogram rendering)
+- **Audio I/O**: Streamlit Audio Player & Download components
+
+### ⚙️ Digital Signal Processing
+- **Audio Processing**: SoundFile & SciPy (polyphase resampling, windowing, FFT)
+- **Mathematical Computation**: NumPy (vectorized matrix operations, linear algebra)
+
+### 🧠 Machine Learning & Live Mic
+- **Neural Network Framework**: PyTorch (CUDA-accelerated)
+- **Microphone Stream**: SoundDevice (real-time input/output buffer streaming)
 
 ---
 
 ## 📂 Project Structure
 
-```
-project/
+```bash
+AI-Based-Real-Time-Noise-Cancellation-System/
 │
-├── run.py                 # Main pipeline
-├── config.yaml           # Configuration file
-├── requirements.txt
+├── app/                      # Streamlit UI Client
+│   └── app.py                # Main Streamlit dashboard script
 │
-├── data/                 # Input audio
-│   └── clean/
-│       └── sample1.wav
+├── configs/                  # Configuration Layer
+│   └── config.yaml           # Global parameters and model settings
 │
-├── output/               # Processed audio output
+├── filters/                  # Digital Signal Processing Algorithms
+│   ├── lms.py                # Least Mean Squares Filter
+│   ├── nlms.py               # Normalized Least Mean Squares Filter
+│   └── wiener.py             # Wiener frequency-domain filter
 │
-├── filters/              # DSP filters
-│   ├── lms.py
-│   ├── nlms.py
-│   └── wiener.py
+├── ml_model/                 # Deep Learning Pipeline (PyTorch)
+│   ├── model.py              # DenoiseNet network architecture & inference
+│   ├── train.py              # Live training script with synthetic pairs
+│   └── weights/              # Serialized PyTorch models
+│       └── denoise_model.pth # Trained model weights
 │
-├── ml_model/             # Deep learning model
-│   ├── model.py
-│   ├── train.py
-│   └── weights/
-│       └── denoise_model.pth
+├── realtime/                 # Real-time Microphone Processing
+│   ├── mic_stream.py         # SoundDevice low-latency stream buffer
+│   └── processor.py          # Unified processing entry point for filters
 │
-├── utils/
-│   ├── audio.py
-│   ├── metrics.py
-│   └── config.py
+├── utils/                    # Utility Helpers
+│   ├── audio.py              # Normalization, resampling, loading/saving, audio I/O
+│   ├── metrics.py            # Evaluation metrics (SNR, MSE, RMSE, PSNR)
+│   └── config.py             # YAML config parser
 │
-├── core/
-│   └── processor.py
+├── tests/                    # Testing Suite
+│   └── test_pipeline.py      # Module tests for pipelines and filters
 │
-└── app/
-    └── app.py            # Streamlit UI
+├── data/                     # Dataset Directory
+│   ├── clean/                # Clean preset audio samples
+│   └── noisy/                # Noisy preset audio samples
+│
+├── output/                   # Processed outputs (gitignored)
+├── run.py                    # Main CLI pipeline entry point
+├── requirements.txt          # Python dependencies
+└── README.md                 # Project Documentation
 ```
 
 ---
 
-## ⚙️ Installation
+## ⚙️ Installation & Setup
 
-### 1. Clone the repository
-
+### 1️⃣ Clone the Repository
 ```bash
-git clone https://github.com/yourusername/ai-noise-cancellation.git
-cd ai-noise-cancellation
+git clone https://github.com/Kishor055/AI-Based-Real-Time-Noise-Cancellation-System.git
+cd AI-Based-Real-Time-Noise-Cancellation-System
 ```
 
-### 2. Install dependencies
+### 2️⃣ Environment Setup
+Create a virtual environment and install the required dependencies:
 
 ```bash
+# Create virtual environment
+python -m venv .venv
+
+# Activate environment:
+# Windows (PowerShell):
+.venv\Scripts\Activate.ps1
+# Windows (CMD):
+.venv\Scripts\activate.bat
+# Linux/macOS:
+source .venv/bin/activate
+
+# Install requirements
 pip install -r requirements.txt
 ```
 
 ---
 
-## ▶️ Usage
+## ▶️ Usage Guide
 
-### 🔹 Run Main Pipeline
-
+### 🔹 Run Main Command-Line Pipeline
+Process the default configured audio file using parameters from `configs/config.yaml`:
 ```bash
 python run.py
 ```
 
-### 🔹 Run Web App
-
+### 🔹 Run Streamlit Dashboard Interface
+Launch the interactive dashboard to upload, record, and denoise audio visually:
 ```bash
 streamlit run app/app.py
 ```
+Open **`http://localhost:8501/`** in your browser to interact with the application.
 
----
-
-## ⚙️ Configuration (`config.yaml`)
-
-```yaml
-audio:
-  input:
-    file: "data/clean/sample1.wav"
-  output:
-    file: "output/filtered_audio.wav"
-
-filters:
-  active: "NLMS"
-
-  lms:
-    filter_order: 32
-    mu: 0.01
-
-  nlms:
-    filter_order: 64
-    mu: 0.008
-
-  wiener:
-    alpha: 1.0
-
-metrics:
-  enabled: true
-
-output:
-  save_audio: true
+### 🔹 Run Unit & Pipeline Tests
+Run the test pipeline to verify that all filters and utilities are operating correctly:
+```bash
+python -m tests.test_pipeline
 ```
 
----
-
-## 🤖 Deep Learning Model
-
-* Framework: **PyTorch**
-* Architecture: Fully Connected Autoencoder
-* Input size: 1024 samples (chunk-based processing)
-* Output: Denoised signal
-
-### Train Model
-
+### 🧠 Train the Neural Network Autoencoder
+Generate synthetic training pairs using clean samples inside `data/clean` and train `DenoiseNet`:
 ```bash
 python ml_model/train.py
 ```
+*Note: The script automatically detects and utilizes CUDA/GPU if available for acceleration.*
 
 ---
 
-## 📊 Performance Metrics
+## 📈 Use Cases & Impact
 
-| Metric | Description                |
-| ------ | -------------------------- |
-| SNR    | Signal-to-Noise Ratio      |
-| MSE    | Mean Squared Error         |
-| RMSE   | Root Mean Squared Error    |
-| PSNR   | Peak Signal-to-Noise Ratio |
+- 🎙️ **Podcast & Voiceover Cleansing**: Removes background ambient noise, room reverb, and white noise from recorded voice.
+- 📞 **Real-Time Telephony & Conferencing**: Cancels powerline electrical hum (50Hz/60Hz) and steady state noises on phone calls.
+- 🎤 **Live Microphone Noise Suppression**: Denoises live inputs directly from your audio interface before transmitting it downstream.
+- 🎓 **Educational DSP Sandbox**: Serves as a perfect learning platform to compare classical adaptive signal processing with neural networks.
 
 ---
 
-## 🎤 Real-Time Processing
+## ⭐ Support & Contributions
 
-```python
-from utils.audio import stream_audio
-from core.processor import process_audio
-
-stream = stream_audio(lambda x: process_audio(x, mode="NLMS"))
-```
-
----
-
-## ⚠️ Limitations
-
-* LMS/NLMS require a **noise reference signal**
-* Wiener filter assumes **stationary noise**
-* Deep learning model trained on **synthetic noise**
-* Real-world performance depends on dataset quality
+Contributions are welcome! Please follow these guidelines:
+1. Fork the project.
+2. Create a feature branch (`git checkout -b feature/NewFeature`).
+3. Commit your changes (`git commit -m 'Add NewFeature'`).
+4. Push to the branch (`git push origin feature/NewFeature`).
+5. Open a Pull Request.
 
 ---
 
-## 🚀 Future Improvements
-
-* CNN / U-Net based denoising model
-* Real-world noise dataset integration
-* Dual-microphone adaptive filtering
-* Mobile / desktop deployment
-* API (FastAPI) integration
+### 📌 Development Lead
+**KISHOR KAKDE PATIL**  
+[GitHub Profile](https://github.com/Kishor055)
 
 ---
-
-## 📦 Requirements
-
-```
-numpy
-scipy
-matplotlib
-soundfile
-sounddevice
-torch
-tqdm
-pyyaml
-streamlit
-```
-
----
-
-## 🎯 Resume Highlight
-
-> Developed a full-stack audio denoising system integrating DSP algorithms and deep learning, with real-time processing, performance evaluation, and interactive web deployment.
-
----
-
-## 📜 License
-
-This project is open-source and available under the MIT License.
-
----
-
-## 👨‍💻 Author
-
-**Kishor Kakde**
----
-GitHub: https://github.com/Kishor055/AI-Based-Real-Time-Noise-Cancellation-System
-
----
-
-## ⭐ Support
-
-If you find this project useful, please ⭐ star the repository!
-
----
+*Developed with ❤️ to build cleaner audio experiences.*
