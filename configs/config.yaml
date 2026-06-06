@@ -46,7 +46,7 @@ filters:
 
   nlms:
     filter_order: 64
-    mu: 0.5
+    mu: 0.08
     epsilon: 1e-6
 
   wiener:
@@ -133,28 +133,3 @@ output:
 debug:
   verbose: true
   log_level: INFO   # DEBUG / INFO / WARNING / ERROR
-  audio:
-  input:
-    file: "data/clean/sample1.wav"
-  output:
-    file: "output/filtered_audio.wav"
-
-filters:
-  active: "NLMS"   # LMS | NLMS | Wiener | DL
-
-  lms:
-    filter_order: 32
-    mu: 0.01
-
-  nlms:
-    filter_order: 64
-    mu: 0.008
-
-  wiener:
-    alpha: 1.0
-
-metrics:
-  enabled: true
-
-output:
-  save_audio: true

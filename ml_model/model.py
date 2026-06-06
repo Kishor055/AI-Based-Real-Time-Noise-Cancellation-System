@@ -33,20 +33,27 @@ model = DenoiseNet().to(DEVICE)
 
 WEIGHTS_PATH = os.path.join(os.path.dirname(__file__), "weights", "denoise_model.pth")
 
+MODEL_AVAILABLE = False
+
 if os.path.exists(WEIGHTS_PATH):
-    checkpoint = torch.load(WEIGHTS_PATH, map_location=DEVICE)
+    try:
+        checkpoint = torch.load(WEIGHTS_PATH, map_location=DEVICE)
 
-    # Handle both raw state_dict and checkpoint dict
-    if isinstance(checkpoint, dict) and "model_state_dict" in checkpoint:
-        model.load_state_dict(checkpoint["model_state_dict"])
-    else:
-        model.load_state_dict(checkpoint)
+        # Handle both raw state_dict and checkpoint dict
+        if isinstance(checkpoint, dict) and "model_state_dict" in checkpoint:
+            model.load_state_dict(checkpoint["model_state_dict"])
+        else:
+            model.load_state_dict(checkpoint)
 
-    print("✅ Model weights loaded")
+        model.eval()
+        MODEL_AVAILABLE = True
+        print("[INFO] Model weights loaded successfully")
+    except Exception as e:
+        print(f"[WARNING] Failed to load model weights: {e}")
+        print("[WARNING] Deep Learning mode disabled")
 else:
-    raise FileNotFoundError("❌ Trained model weights not found. Run train.py first.")
-
-model.eval()
+    print("[WARNING] No trained weights found")
+    print("[WARNING] Run train.py to enable DL denoising")
 
 
 # ---------------- INFERENCE FUNCTION ----------------
@@ -55,6 +62,10 @@ def denoise_model(signal, chunk_size=1024, overlap=256):
     Input: 1D numpy array
     Output: denoised signal (same length)
     """
+    global MODEL_AVAILABLE
+    if not MODEL_AVAILABLE:
+        print("[WARNING] Deep Learning model not available. Returning original signal.")
+        return np.asarray(signal, dtype=np.float32)
 
     signal = np.asarray(signal, dtype=np.float32)
 

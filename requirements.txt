@@ -1,0 +1,9 @@
+numpy
+scipy
+matplotlib
+soundfile
+sounddevice
+torch
+tqdm
+pyyaml
+streamlit

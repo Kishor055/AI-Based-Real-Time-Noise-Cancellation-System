@@ -17,13 +17,14 @@ def log(msg, level="INFO"):
 
 
 # ---------------- FILTER ENGINE ----------------
-def process_audio(signal, config):
+def process_audio(signal, config, noise_ref=None):
     mode = config["filters"]["active"]
 
     log(f"Using filter: {mode}")
 
-    # NOTE: Fake noise reference (for testing only)
-    noise_ref = np.random.randn(len(signal)) * 0.01
+    if noise_ref is None:
+        # NOTE: Fake noise reference (for testing only)
+        noise_ref = np.random.randn(len(signal)) * 0.01
 
     try:
         if mode == "LMS":
@@ -85,7 +86,7 @@ def main():
     log("Noise added for testing")
 
     # Process
-    filtered = process_audio(noisy_signal, config)
+    filtered = process_audio(noisy_signal, config, noise_ref=noise)
 
     # Metrics
     if config.get("metrics", {}).get("enabled", False):

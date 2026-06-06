@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 
 from utils.audio import load_audio
 from utils.metrics import evaluate_all
-from core.processor import process_audio
+from realtime.processor import process_audio
 
 st.set_page_config(page_title="AI Noise Cancellation", layout="wide")
 
@@ -35,7 +35,10 @@ if uploaded_file is not None:
     noisy_signal = signal + noise
 
     # Process
-    filtered = process_audio(noisy_signal, mode=mode)
+    if mode in ["LMS", "NLMS"]:
+        filtered = process_audio(noisy_signal, mode=mode, noise_ref=noise)
+    else:
+        filtered = process_audio(noisy_signal, mode=mode)
 
     # ---------------- METRICS ----------------
     metrics = evaluate_all(signal, filtered)
