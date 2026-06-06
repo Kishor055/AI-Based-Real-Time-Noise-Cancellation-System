@@ -7,3 +7,6 @@ torch
 tqdm
 pyyaml
 streamlit
+fastapi
+uvicorn
+python-multipart
