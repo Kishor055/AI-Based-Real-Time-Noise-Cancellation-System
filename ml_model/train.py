@@ -1,4 +1,12 @@
 import os
+import sys
+import io
+
+# Force UTF-8 output on Windows to prevent UnicodeEncodeError with emojis
+if sys.platform.startswith("win"):
+    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8", errors="replace")
+    sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding="utf-8", errors="replace")
+
 import numpy as np
 import torch
 import torch.nn as nn
@@ -8,8 +16,10 @@ from tqdm import tqdm
 from model import DenoiseNet
 
 # ---------------- CONFIG ----------------
-DATA_PATH = "../data/clean"
-WEIGHTS_PATH = "weights/denoise_model.pth"
+# Dynamically resolve paths relative to this script's directory
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+DATA_PATH = os.path.join(BASE_DIR, "data", "clean")
+WEIGHTS_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "weights", "denoise_model.pth")
 
 EPOCHS = 20
 BATCH_SIZE = 16
@@ -18,7 +28,7 @@ CHUNK_SIZE = 1024
 
 DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
 
-os.makedirs("weights", exist_ok=True)
+os.makedirs(os.path.dirname(WEIGHTS_PATH), exist_ok=True)
 
 
 # ---------------- DATA LOADER ----------------
